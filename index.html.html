@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sopralluogo</title>
+<style>
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:#111;color:#f0f0f0;min-height:100vh}
+
+/* ── NAV ── */
+.nav{position:sticky;top:0;z-index:10;background:#1a1a1a;border-bottom:1px solid #2e2e2e;padding:12px 16px;display:flex;align-items:center;gap:10px;min-height:57px}
+.nav-title{font-size:16px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-btn{background:#2a2a2a;border:1px solid #444;color:#f0f0f0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── SCREENS ── */
+.screen{display:none;padding:16px;flex-direction:column;gap:14px;min-height:calc(100vh - 57px)}
+.screen.on{display:flex}
+
+/* ── BASE UI ── */
+.card{background:#1e1e1e;border:1px solid #2e2e2e;border-radius:12px;padding:16px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#777;margin-bottom:6px}
+input[type=text]{width:100%;background:#2a2a2a;border:1px solid #3a3a3a;border-radius:8px;color:#f0f0f0;font-size:15px;padding:10px 13px;outline:none;font-family:inherit}
+input[type=text]:focus{border-color:#f0c040}
+.btn{width:100%;padding:13px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
+.btn:active{opacity:.7;transform:scale(.98)}
+.btn-y{background:#f0c040;color:#111}
+.btn-g{background:#252525;color:#f0f0f0;border:1px solid #3a3a3a}
+.btn-grn{background:#2ab86a;color:#fff}
+.empty{padding:40px 20px;text-align:center;color:#555;font-size:14px;line-height:1.6}
+.empty div{font-size:42px;margin-bottom:10px}
+
+/* ── FLOOR LIST ── */
+.floor-row{background:#1e1e1e;border:1px solid #2e2e2e;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.floor-row:active{border-color:#f0c040}
+.floor-icon{width:40px;height:40px;border-radius:10px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.floor-info{flex:1}
+.floor-name{font-weight:600;font-size:14px}
+.floor-meta{font-size:12px;color:#777;margin-top:2px}
+
+/* ── UPLOAD ── */
+.upload-zone{background:#1a1a1a;border:2px dashed #444;border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer}
+.upload-zone:active{border-color:#f0c040}
+.upload-zone p{color:#777;font-size:14px;margin-top:8px}
+.uzname{color:#f0c040;font-size:13px;margin-top:10px;font-weight:600;min-height:18px}
+
+/* ── CANVAS ── */
+#scCanvas{padding:0;gap:0}
+.ctb{background:#1a1a1a;border-bottom:1px solid #2e2e2e;padding:10px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:57px;z-index:5}
+.ctb-title{flex:1;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbtn{background:#252525;border:1px solid #3a3a3a;color:#f0f0f0;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.tbtn.on{background:#f0c040;color:#111;border-color:#f0c040}
+.cwrap{position:relative;background:#1c1c1c;overflow:auto;-webkit-overflow-scrolling:touch}
+canvas#fc{display:block;touch-action:none}
+#msvg{position:absolute;top:0;left:0;pointer-events:none}
+#msvg .mk{pointer-events:all;cursor:pointer}
+
+/* ── PHOTOS ── */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pcard{background:#1e1e1e;border:1px solid #2e2e2e;border-radius:10px;overflow:hidden;position:relative}
+.pcard img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.pcard-lbl{padding:7px 10px;font-size:12px;color:#777;display:flex;align-items:center;gap:6px}
+.pbadge{background:#f0c040;color:#111;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:800}
+.pdel{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.75);border:none;color:#ff5555;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;font-family:inherit}
+
+/* ── PAGE PICKER ── */
+.page-card{background:#252525;border:2px solid #3a3a3a;border-radius:10px;overflow:hidden;cursor:pointer}
+.page-card:active{border-color:#f0c040}
+.page-card img{width:100%;display:block;background:#fff}
+.page-card-lbl{padding:6px;text-align:center;font-size:12px;font-weight:700;color:#aaa}
+
+/* ── MODALI ── */
+.modal-wrap{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:none;align-items:flex-end;justify-content:center;padding:16px}
+.modal-wrap.on{display:flex}
+.modal-box{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:20px;padding:22px;width:100%;max-width:460px;max-height:85vh;overflow-y:auto}
+.modal-box h2{font-size:17px;font-weight:700;margin-bottom:5px}
+.modal-box p{font-size:13px;color:#888;margin-bottom:14px;line-height:1.5}
+
+/* ── ROTAZIONE / DIMENSIONE ── */
+#rotBar{position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(15,15,15,.97);border-top:1px solid #333;padding:12px 16px 30px;display:none;flex-direction:column;gap:8px}
+#rotBar.on{display:flex}
+.rblabel{display:flex;align-items:center;gap:8px}
+.rblabel span{font-size:13px;font-weight:700;flex:1}
+.rbval{font-size:14px;font-weight:800;color:#f0c040;min-width:48px;text-align:right}
+.rbbtns{display:flex;gap:6px}
+.rbbtns button{flex:1;padding:9px 0;background:#252525;border:1px solid #3a3a3a;color:#f0f0f0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ── CAMERA ── */
+#cam{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column}
+#cam.on{display:flex}
+#vid{width:100%;flex:1;object-fit:cover}
+.cambar{padding:20px 32px 44px;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.shutter{width:70px;height:70px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.4);cursor:pointer}
+.shutter:active{transform:scale(.88)}
+.camcancel{background:transparent;border:none;color:#fff;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;padding:10px}
+
+/* ── SPINNER ── */
+#spov{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#spov.on{display:flex}
+.sp{width:44px;height:44px;border:4px solid #2a2a2a;border-top-color:#f0c040;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.spmsg{font-size:14px;color:#aaa;text-align:center;max-width:260px;line-height:1.6}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#222;border:1px solid #444;color:#f0f0f0;padding:10px 20px;border-radius:100px;font-size:13px;z-index:90;opacity:0;transition:opacity .3s;pointer-events:none;max-width:88vw;text-align:center;line-height:1.4}
+#toast.on{opacity:1}
+
+/* ══════════════════════════════════════════
+   FASCICOLO — schermata di stampa
+   Visibile a schermo, nascosto in stampa tranne il contenuto
+══════════════════════════════════════════ */
+#scFascicolo{padding:0;gap:0}
+
+/* Barra superiore — solo a schermo */
+#fascicoloTopbar{
+  background:#1a1a1a;border-bottom:1px solid #2e2e2e;
+  padding:12px 16px;display:flex;align-items:center;gap:10px;
+  position:sticky;top:57px;z-index:5;
+}
+#fascicoloTopbar .ftitle{flex:1;font-size:14px;font-weight:700;color:#f0c040}
+
+/* Contenuto del fascicolo */
+#fascicoloBody{
+  background:#fff;color:#111;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:13px;
+  flex:1;
+}
+
+/* Regole di stampa */
+@media print{
+  /* Nasconde TUTTO tranne il fascicolo */
+  body > *{display:none!important}
+  #fascicoloBody{
+    display:block!important;
+    position:fixed;inset:0;
+    background:#fff;color:#111;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:13px;
+    overflow:visible;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV (nascosto in stampa via CSS sopra) -->
+<div class="nav">
+  <div style="font-size:22px">📐</div>
+  <div class="nav-title" id="navTitle">Sopralluogo Tecnico</div>
+  <button class="nav-btn" onclick="goHome()">🏗 Piani</button>
+</div>
+
+<!-- ══ HOME ══ -->
+<div class="screen on" id="scHome">
+  <div class="card">
+    <div class="lbl">Titolo Fascicolo</div>
+    <input type="text" id="projTitle" placeholder="es. Edificio Via Roma 12"
+      oninput="document.getElementById('navTitle').textContent=this.value||'Sopralluogo Tecnico'">
+  </div>
+  <div class="lbl">Piani inseriti</div>
+  <div id="floorList"></div>
+  <button class="btn btn-g" onclick="openAddModal()">＋ Aggiungi Piano</button>
+  <button class="btn btn-y" onclick="doGenPDF()">📄 Genera Fascicolo PDF</button>
+</div>
+
+<!-- ══ CANVAS ══ -->
+<div class="screen" id="scCanvas">
+  <div class="ctb">
+    <button class="tbtn" onclick="goHome()" style="font-size:16px;padding:7px 10px">←</button>
+    <div class="ctb-title" id="ctName">—</div>
+    <button class="tbtn" id="mkBtn" onclick="toggleAddMk()">📍 Punto di presa</button>
+    <button class="tbtn" onclick="goPhotos()">🖼 Foto</button>
+  </div>
+  <div class="cwrap" id="cwrap">
+    <canvas id="fc"></canvas>
+    <svg id="msvg"></svg>
+  </div>
+</div>
+
+<!-- ══ FOTO PIANO ══ -->
+<div class="screen" id="scPhotos">
+  <button class="btn btn-g" onclick="goCanvas()">← Torna alla planimetria</button>
+  <div class="lbl">Foto — <span id="psName"></span></div>
+  <div class="pgrid" id="pgrid"></div>
+</div>
+
+<!-- ══ PAGE PICKER ══ -->
+<div class="screen" id="scPagePicker">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+    <button class="btn btn-g" style="width:auto;padding:10px 16px" onclick="cancelPagePick()">✕ Annulla</button>
+    <div>
+      <div style="font-size:15px;font-weight:700">Scegli pagina</div>
+      <div id="pagePickerSub" style="font-size:12px;color:#777;margin-top:2px"></div>
+    </div>
+  </div>
+  <div id="pageGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+</div>
+
+<!-- ══ FASCICOLO (schermata di stampa) ══ -->
+<div class="screen" id="scFascicolo">
+
+  <!-- Barra top con pulsante stampa — sparisce in stampa -->
+  <div id="fascicoloTopbar">
+    <div>
+      <div class="ftitle">📄 Fascicolo pronto</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Scorri per controllare</div>
+    </div>
+    <button class="tbtn" onclick="goHome()">✕</button>
+  </div>
+
+  <!-- Pulsante stampa prominente — sparisce in stampa -->
+  <div id="fascicoloPrintBtn" style="padding:14px 16px;background:#1a1a1a;border-bottom:2px solid #f0c040">
+    <button class="btn btn-y" style="font-size:16px;padding:15px" onclick="window.print()">
+      🖨 Stampa / Salva come PDF
+    </button>
+    <div style="font-size:12px;color:#555;text-align:center;margin-top:8px;line-height:1.5">
+      Sul telefono: tocca <strong style="color:#aaa">Stampa</strong> → seleziona <strong style="color:#aaa">Salva come PDF</strong>
+    </div>
+  </div>
+
+  <!-- Contenuto del fascicolo — questo viene stampato -->
+  <div id="fascicoloBody"></div>
+
+</div>
+
+<!-- ══ MODAL: NUOVO PIANO ══ -->
+<div class="modal-wrap" id="mdlAddFloor">
+  <div class="modal-box">
+    <h2>Nuovo Piano</h2>
+    <p>Inserisci nome e carica la planimetria</p>
+    <input type="text" id="newName" placeholder="es. Piano Terra, 1° Piano…" style="margin-bottom:12px">
+    <div class="upload-zone" onclick="document.getElementById('filePick').click()">
+      <div style="font-size:34px">📋</div>
+      <p><strong>Carica planimetria</strong><br><small>PDF · JPG · PNG</small></p>
+      <div class="uzname" id="uzName"></div>
+    </div>
+    <input type="file" id="filePick" accept="application/pdf,image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="onFilePick(event)">
+    <div style="height:14px"></div>
+    <button class="btn btn-y" onclick="confirmFloor()">✓ Aggiungi Piano</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-g" onclick="closeModal('mdlAddFloor')">Annulla</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: FOTO ══ -->
+<div class="modal-wrap" id="mdlPhoto">
+  <div class="modal-box">
+    <h2 id="photoTitle">Punto di presa #1</h2>
+    <p id="photoSub">Associa una foto</p>
+    <button class="btn btn-y" onclick="startCamera()">📷 Fotocamera</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-g" onclick="pickGallery()">🖼 Scegli da Galleria</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-g" onclick="closeModal('mdlPhoto')">Salta — nessuna foto</button>
+  </div>
+</div>
+
+<!-- ══ BARRA ROTAZIONE / DIMENSIONE ══ -->
+<div id="rotBar">
+  <div class="rblabel">
+    <span>🔄 Rotazione</span>
+    <div class="rbval" id="rotDeg">0°</div>
+  </div>
+  <div class="rbbtns">
+    <button onclick="rotStep(-45)">↺ 45°</button>
+    <button onclick="rotStep(-15)">↺ 15°</button>
+    <button onclick="rotStep(15)">↻ 15°</button>
+    <button onclick="rotStep(45)">↻ 45°</button>
+  </div>
+  <div class="rblabel" style="margin-top:4px">
+    <span>📐 Dimensione</span>
+    <div class="rbval" id="scalePct">100%</div>
+  </div>
+  <div class="rbbtns">
+    <button onclick="scaleStep(-0.25)">−−</button>
+    <button onclick="scaleStep(-0.1)">−</button>
+    <button onclick="scaleStep(0.1)">＋</button>
+    <button onclick="scaleStep(0.25)">＋＋</button>
+  </div>
+  <button class="btn btn-y" style="margin-top:4px" onclick="confirmRot()">✓ Conferma</button>
+</div>
+
+<!-- ══ CAMERA ══ -->
+<div id="cam">
+  <video id="vid" autoplay playsinline muted></video>
+  <canvas id="phc" style="display:none"></canvas>
+  <div class="cambar">
+    <button class="camcancel" onclick="closeCamera()">Annulla</button>
+    <button class="shutter" onclick="snapPhoto()"></button>
+    <div style="width:60px"></div>
+  </div>
+</div>
+
+<input type="file" id="galInput" accept="image/*" style="display:none" onchange="onGalPick(event)">
+
+<div id="spov"><div class="sp"></div><div class="spmsg" id="spmsg">Elaborazione…</div></div>
+<div id="toast"></div>
+
+<script>
+/* ══ STATE ══ */
+var S={
+  floors:[],curId:null,pendingMk:null,
+  addingMk:false,rotMk:null,rotDrag:false,
+  camStream:null,tmpImg:null,pdfDoc:null
+};
+function cur(){return S.floors.find(function(f){return f.id===S.curId;})||null;}
+
+/* ══ NAVIGAZIONE ══ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on');});
+  document.getElementById(id).classList.add('on');
+  window.scrollTo(0,0);
+}
+function goHome(){stopAddMk();stopRotMode();closeAllModals();showScreen('scHome');renderList();}
+function goCanvas(){closeAllModals();showScreen('scCanvas');}
+function goPhotos(){
+  var f=cur();if(!f)return;
+  document.getElementById('psName').textContent=f.name;
+  renderPhotos(f);closeAllModals();showScreen('scPhotos');
+}
+
+/* ══ MODALI ══ */
+function openModal(id){closeAllModals();document.getElementById(id).classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+function closeAllModals(){document.querySelectorAll('.modal-wrap').forEach(function(m){m.classList.remove('on');});}
+
+/* ══ HOME ══ */
+function renderList(){
+  var el=document.getElementById('floorList');
+  if(!S.floors.length){
+    el.innerHTML='<div class="empty"><div>🏢</div>Nessun piano ancora.<br>Tocca "Aggiungi Piano" per iniziare.</div>';
+    return;
+  }
+  el.innerHTML=S.floors.map(function(f){
+    var pc=Object.keys(f.photos).length;
+    return '<div class="floor-row" onclick="openFloor(\''+f.id+'\')">'+
+      '<div class="floor-icon">🏠</div>'+
+      '<div class="floor-info">'+
+        '<div class="floor-name">'+hesc(f.name)+'</div>'+
+        '<div class="floor-meta">'+f.markers.length+' punti · '+pc+' foto</div>'+
+      '</div>'+
+      '<div style="color:#444;font-size:22px">›</div></div>';
+  }).join('');
+}
+
+/* ══ AGGIUNGI PIANO ══ */
+function openAddModal(){
+  document.getElementById('newName').value='';
+  document.getElementById('uzName').textContent='';
+  document.getElementById('filePick').value='';
+  S.tmpImg=null;openModal('mdlAddFloor');
+}
+function onFilePick(e){
+  var file=e.target.files[0];if(!file)return;
+  var ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(ext==='pdf'){loadPDF(file);}
+  else{
+    var r=new FileReader();
+    r.onload=function(ev){S.tmpImg=ev.target.result;document.getElementById('uzName').textContent='✓ '+file.name;};
+    r.readAsDataURL(file);
+  }
+  e.target.value='';
+}
+function confirmFloor(){
+  var name=document.getElementById('newName').value.trim();
+  if(!name){toast('⚠️ Inserisci il nome del piano');return;}
+  if(!S.tmpImg){toast('⚠️ Carica la planimetria');return;}
+  var f={id:'f'+Date.now(),name:name,imgData:S.tmpImg,markers:[],photos:{}};
+  S.floors.push(f);S.tmpImg=null;
+  closeModal('mdlAddFloor');
+  toast('Piano "'+name+'" aggiunto!');
+  openFloor(f.id);
+}
+
+/* ══ PDF IMPORT ══ */
+function loadPDF(file){
+  if(typeof pdfjsLib==='undefined'){toast('PDF.js non pronto, usa JPG/PNG');return;}
+  spinShow('Apertura PDF…');
+  var fr=new FileReader();
+  fr.onload=function(ev){
+    pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise
+      .then(function(pdf){
+        S.pdfDoc=pdf;
+        if(pdf.numPages===1){
+          return pdfPageToImg(pdf,1,2.5).then(function(d){
+            S.tmpImg=d;document.getElementById('uzName').textContent='✓ Planimetria caricata';spinHide();
+          });
+        }
+        return showPagePicker(pdf,pdf.numPages);
+      })
+      .catch(function(err){spinHide();toast('Errore PDF: '+err.message);});
+  };
+  fr.onerror=function(){spinHide();toast('Errore lettura file');};
+  fr.readAsArrayBuffer(file);
+}
+function pdfPageToImg(pdf,n,scale){
+  return pdf.getPage(n).then(function(page){
+    var vp=page.getViewport({scale:scale||2.5});
+    var cv=document.createElement('canvas');
+    cv.width=vp.width;cv.height=vp.height;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+    return page.render({canvasContext:ctx,viewport:vp}).promise
+      .then(function(){return cv.toDataURL('image/jpeg',0.92);});
+  });
+}
+function showPagePicker(pdf,total){
+  var grid=document.getElementById('pageGrid');grid.innerHTML='';
+  document.getElementById('pagePickerSub').textContent=total+' pagine — tocca quella da usare';
+  for(var i=1;i<=total;i++){
+    var card=document.createElement('div');card.className='page-card';card.id='pgc-'+i;
+    card.innerHTML='<div style="aspect-ratio:3/4;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px">⏳ '+i+'</div><div class="page-card-lbl">Pagina '+i+'</div>';
+    grid.appendChild(card);
+  }
+  closeModal('mdlAddFloor');spinHide();showScreen('scPagePicker');
+  function loadThumb(n){
+    if(n>total)return;
+    pdfPageToImg(pdf,n,0.6).then(function(thumb){
+      var c=document.getElementById('pgc-'+n);if(!c)return;
+      var num=n;c.innerHTML='<img src="'+thumb+'"><div class="page-card-lbl">Pagina '+num+'</div>';
+      c.onclick=function(){pickPage(num);};
+      setTimeout(function(){loadThumb(n+1);},60);
+    }).catch(function(){setTimeout(function(){loadThumb(n+1);},60);});
+  }
+  setTimeout(function(){loadThumb(1);},150);
+}
+function pickPage(n){
+  if(!S.pdfDoc){toast('Errore PDF');return;}
+  spinShow('Caricamento pagina '+n+'…');
+  pdfPageToImg(S.pdfDoc,n,2.5).then(function(d){
+    S.tmpImg=d;document.getElementById('uzName').textContent='✓ Pagina '+n+' selezionata';
+    spinHide();showScreen('scHome');openModal('mdlAddFloor');
+  }).catch(function(err){spinHide();toast('Errore: '+err.message);});
+}
+function cancelPagePick(){
+  S.pdfDoc=null;S.tmpImg=null;document.getElementById('uzName').textContent='';
+  showScreen('scHome');openModal('mdlAddFloor');
+}
+
+/* ══ CANVAS ══ */
+function openFloor(id){
+  S.curId=id;var f=cur();if(!f)return;
+  document.getElementById('ctName').textContent=f.name;
+  showScreen('scCanvas');drawFloor(f);
+}
+function drawFloor(f){
+  var img=new Image();
+  img.onload=function(){
+    var wrap=document.getElementById('cwrap');
+    var cw=wrap.clientWidth||window.innerWidth;
+    var ch=Math.round(img.naturalHeight/img.naturalWidth*cw);
+    var cv=document.getElementById('fc');
+    cv.width=img.naturalWidth;cv.height=img.naturalHeight;
+    cv.style.width=cw+'px';cv.style.height=ch+'px';
+    var svg=document.getElementById('msvg');
+    svg.style.width=cw+'px';svg.style.height=ch+'px';
+    svg.setAttribute('viewBox','0 0 '+img.naturalWidth+' '+img.naturalHeight);
+    cv.getContext('2d').drawImage(img,0,0);
+    redrawMarkers(f);
+  };
+  img.src=f.imgData;
+}
+
+/* ══ MARKER ══ */
+function toggleAddMk(){if(S.addingMk){stopAddMk();}else{startAddMk();}}
+function startAddMk(){
+  S.addingMk=true;
+  var btn=document.getElementById('mkBtn');btn.classList.add('on');btn.textContent='✋ Stop';
+  var cv=document.getElementById('fc');cv.style.cursor='crosshair';
+  cv.addEventListener('click',onCvClick);cv.addEventListener('touchend',onCvTouch,{passive:false});
+}
+function stopAddMk(){
+  S.addingMk=false;
+  var btn=document.getElementById('mkBtn');btn.classList.remove('on');btn.textContent='📍 Punto di presa';
+  var cv=document.getElementById('fc');cv.style.cursor='default';
+  cv.removeEventListener('click',onCvClick);cv.removeEventListener('touchend',onCvTouch);
+}
+function onCvClick(e){
+  var r=e.target.getBoundingClientRect();
+  placeMk((e.clientX-r.left)*(e.target.width/r.width),(e.clientY-r.top)*(e.target.height/r.height));
+}
+function onCvTouch(e){
+  e.preventDefault();
+  var t=e.changedTouches[0],r=e.target.getBoundingClientRect();
+  placeMk((t.clientX-r.left)*(e.target.width/r.width),(t.clientY-r.top)*(e.target.height/r.height));
+}
+function placeMk(x,y){
+  var f=cur();if(!f)return;
+  var mk={id:'mk'+Date.now(),num:f.markers.length+1,x:x,y:y,rot:0,scale:1};
+  f.markers.push(mk);redrawMarkers(f);stopAddMk();
+  S.pendingMk=mk;startRotMode(mk);
+}
+function tapMk(id){
+  var f=cur();if(!f)return;
+  var mk=f.markers.find(function(m){return m.id===id;});if(!mk)return;
+  S.pendingMk=mk;startRotMode(mk);
+}
+function redrawMarkers(f){
+  var svg=document.getElementById('msvg');
+  svg.innerHTML=f.markers.map(function(m){
+    var col=f.photos[m.id]?'#3ddc84':'#f0c040';
+    var rot=m.rot||0,sc=m.scale||1;
+    var ring=S.rotMk&&S.rotMk.id===m.id?' stroke="white" stroke-width="4"':'';
+    return '<g class="mk" transform="translate('+m.x+','+m.y+') rotate('+rot+') scale('+sc+')" onclick="tapMk(\''+m.id+'\')">'+
+      '<circle r="26" fill="'+col+'" fill-opacity=".12"/>'+
+      '<circle r="20" fill="'+col+'" fill-opacity=".28" stroke="'+col+'" stroke-width="2.5"/>'+
+      '<polygon points="0,-35 -9,-19 9,-19" fill="'+col+'"'+ring+'/>'+
+      '<circle r="14" fill="'+col+'"'+ring+'/>'+
+      '<text x="0" y="5" text-anchor="middle" fill="#111" font-size="13" font-weight="900" font-family="-apple-system,Arial">'+m.num+'</text>'+
+      '</g>';
+  }).join('');
+}
+
+/* ══ ROTAZIONE + SCALA ══ */
+function startRotMode(mk){
+  S.rotMk=mk;
+  document.getElementById('rotDeg').textContent=(mk.rot||0)+'°';
+  document.getElementById('scalePct').textContent=Math.round((mk.scale||1)*100)+'%';
+  document.getElementById('rotBar').classList.add('on');
+  redrawMarkers(cur());
+  var svg=document.getElementById('msvg');
+  svg.style.pointerEvents='all';
+  svg.addEventListener('touchstart',onRotTS,{passive:false});
+  svg.addEventListener('touchmove',onRotTM,{passive:false});
+  svg.addEventListener('touchend',onRotTE,{passive:false});
+  svg.addEventListener('mousedown',onRotMD);
+  svg.addEventListener('mousemove',onRotMM);
+  svg.addEventListener('mouseup',onRotMU);
+  toast('Trascina attorno al punto per ruotare · usa ＋/− per la dimensione');
+}
+function stopRotMode(){
+  S.rotMk=null;S.rotDrag=false;
+  document.getElementById('rotBar').classList.remove('on');
+  var svg=document.getElementById('msvg');
+  svg.removeEventListener('touchstart',onRotTS);svg.removeEventListener('touchmove',onRotTM);
+  svg.removeEventListener('touchend',onRotTE);svg.removeEventListener('mousedown',onRotMD);
+  svg.removeEventListener('mousemove',onRotMM);svg.removeEventListener('mouseup',onRotMU);
+  svg.style.pointerEvents='none';
+}
+function confirmRot(){
+  var mk=S.pendingMk;stopRotMode();if(!mk)return;
+  var f=cur();
+  document.getElementById('photoTitle').textContent='Punto di presa #'+mk.num;
+  document.getElementById('photoSub').textContent=f&&f.photos[mk.id]?'Sostituisci la foto o salta':'Aggiungi una foto';
+  openModal('mdlPhoto');
+}
+function calcAngle(cx,cy){
+  var mk=S.rotMk;if(!mk)return 0;
+  var svg=document.getElementById('msvg');
+  var rect=svg.getBoundingClientRect();
+  var vb=svg.getAttribute('viewBox').split(' ');
+  var sx=parseFloat(vb[2])/rect.width;
+  var px=(cx-rect.left)*sx,py=(cy-rect.top)*parseFloat(vb[3])/rect.height;
+  return ((Math.atan2(px-mk.x,-(py-mk.y))*180/Math.PI)%360+360)%360;
+}
+function applyAngle(a){
+  var mk=S.rotMk;if(!mk)return;
+  mk.rot=Math.round(a);document.getElementById('rotDeg').textContent=mk.rot+'°';redrawMarkers(cur());
+}
+function rotStep(d){
+  var mk=S.rotMk;if(!mk)return;
+  mk.rot=((mk.rot||0)+d+360)%360;document.getElementById('rotDeg').textContent=mk.rot+'°';redrawMarkers(cur());
+}
+function scaleStep(d){
+  var mk=S.rotMk;if(!mk)return;
+  mk.scale=Math.max(0.25,Math.min(4,Math.round(((mk.scale||1)+d)*100)/100));
+  document.getElementById('scalePct').textContent=Math.round(mk.scale*100)+'%';redrawMarkers(cur());
+}
+function onRotTS(e){e.preventDefault();S.rotDrag=true;}
+function onRotTM(e){e.preventDefault();if(!S.rotDrag)return;applyAngle(calcAngle(e.touches[0].clientX,e.touches[0].clientY));}
+function onRotTE(e){e.preventDefault();S.rotDrag=false;}
+function onRotMD(e){S.rotDrag=true;applyAngle(calcAngle(e.clientX,e.clientY));}
+function onRotMM(e){if(S.rotDrag)applyAngle(calcAngle(e.clientX,e.clientY));}
+function onRotMU(){S.rotDrag=false;}
+
+/* ══ CAMERA ══ */
+function startCamera(){
+  closeModal('mdlPhoto');
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false})
+    .then(function(stream){S.camStream=stream;document.getElementById('vid').srcObject=stream;document.getElementById('cam').classList.add('on');})
+    .catch(function(){
+      var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';
+      inp.onchange=function(e){if(e.target.files[0]){var r=new FileReader();r.onload=function(ev){savePhoto(ev.target.result);};r.readAsDataURL(e.target.files[0]);}};
+      inp.click();
+    });
+}
+function closeCamera(){stopCam();document.getElementById('cam').classList.remove('on');S.pendingMk=null;}
+function stopCam(){if(S.camStream){S.camStream.getTracks().forEach(function(t){t.stop();});S.camStream=null;}}
+function snapPhoto(){
+  var vid=document.getElementById('vid'),cv=document.getElementById('phc');
+  cv.width=vid.videoWidth||640;cv.height=vid.videoHeight||480;
+  cv.getContext('2d').drawImage(vid,0,0);stopCam();
+  document.getElementById('cam').classList.remove('on');
+  savePhoto(cv.toDataURL('image/jpeg',0.88));
+}
+function pickGallery(){closeModal('mdlPhoto');document.getElementById('galInput').value='';document.getElementById('galInput').click();}
+function onGalPick(e){var file=e.target.files[0];if(!file)return;var r=new FileReader();r.onload=function(ev){savePhoto(ev.target.result);};r.readAsDataURL(file);e.target.value='';}
+function savePhoto(data){
+  var mk=S.pendingMk;if(!mk){toast('Nessun punto attivo');return;}
+  var f=cur();if(!f)return;
+  f.photos[mk.id]=data;S.pendingMk=null;closeModal('mdlPhoto');redrawMarkers(f);
+  toast('📸 Foto salvata — Punto di presa #'+mk.num);
+}
+
+/* ══ FOTO PIANO ══ */
+function renderPhotos(f){
+  var el=document.getElementById('pgrid');
+  var list=f.markers.filter(function(m){return f.photos[m.id];});
+  if(!list.length){el.innerHTML='<div class="empty" style="grid-column:1/-1"><div>📷</div>Nessuna foto ancora.</div>';return;}
+  el.innerHTML=list.map(function(m){
+    return '<div class="pcard"><img src="'+f.photos[m.id]+'" alt="Foto '+m.num+'">'+
+      '<div class="pcard-lbl"><span class="pbadge">#'+m.num+'</span>Punto di presa '+m.num+'</div>'+
+      '<button class="pdel" onclick="delPhoto(\''+f.id+'\',\''+m.id+'\')">✕</button></div>';
+  }).join('');
+}
+function delPhoto(fid,mid){
+  var f=S.floors.find(function(x){return x.id===fid;});if(!f)return;
+  delete f.photos[mid];renderPhotos(f);
+  var fc=cur();if(fc&&fc.id===fid)redrawMarkers(fc);toast('Foto eliminata');
+}
+
+/* ══ GENERA FASCICOLO ══ */
+function doGenPDF(){
+  if(!S.floors.length){toast('⚠️ Nessun piano inserito');return;}
+  var title=document.getElementById('projTitle').value.trim()||'Fascicolo Sopralluogo';
+  spinShow('Elaborazione planimetrie…');
+  var done=0,annotated={};
+  S.floors.forEach(function(f){
+    annotateFloor(f,function(url){
+      annotated[f.id]=url;done++;
+      if(done===S.floors.length){
+        spinShow('Costruzione fascicolo…');
+        setTimeout(function(){
+          renderFascicolo(title,annotated);
+          spinHide();
+          showScreen('scFascicolo');
+          window.scrollTo(0,0);
+        },80);
+      }
+    });
+  });
+}
+
+function annotateFloor(f,cb){
+  var img=new Image();
+  img.onload=function(){
+    var W=1000,H=Math.round(img.naturalHeight/img.naturalWidth*W);
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.drawImage(img,0,0,W,H);
+    var sx=W/img.naturalWidth;
+    f.markers.forEach(function(m){
+      var mx=m.x*sx,my=m.y*sx,col=f.photos[m.id]?'#2ab86a':'#d4a800',r=18,ah=26,sc=m.scale||1;
+      ctx.save();ctx.translate(mx,my);ctx.rotate((m.rot||0)*Math.PI/180);ctx.scale(sc,sc);
+      ctx.shadowColor='rgba(0,0,0,.5)';ctx.shadowBlur=10;ctx.fillStyle=col;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-8,-ah);ctx.lineTo(8,-ah);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.arc(0,-ah-r,r,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;ctx.fillStyle='#fff';
+      ctx.font='bold '+r+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(String(m.num),0,-ah-r);ctx.restore();
+    });
+    cb(cv.toDataURL('image/jpeg',0.92));
+  };
+  img.onerror=function(){cb(f.imgData);};
+  img.src=f.imgData;
+}
+
+/* ══ RENDER FASCICOLO NELLA PAGINA ══ */
+function renderFascicolo(title,annotated){
+  var now=new Date();
+  var dateStr=now.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+
+  var css=
+    'body-reset,*{font-family:Arial,Helvetica,sans-serif}'+
+    '.fc-wrap{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;font-size:13px}'+
+    '.cover{padding:32px 32px 24px;page-break-after:always}'+
+    '.stripe{height:8px;background:#f0c040;margin-bottom:28px;border-radius:2px}'+
+    '.cover h1{font-size:26px;font-weight:900;margin:0 0 8px;line-height:1.2}'+
+    '.cover .sub{font-size:14px;color:#555;margin-bottom:4px}'+
+    '.cover .date{font-size:12px;color:#999;margin-bottom:26px}'+
+    '.summ{background:#f6f6f6;border-radius:8px;padding:14px 18px}'+
+    '.summ h3{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999;margin:0 0 10px}'+
+    '.srow{padding:6px 0;border-bottom:1px solid #eaeaea;font-size:13px;color:#333}'+
+    '.srow:last-child{border:none}'+
+    '.fl{padding:28px 32px 20px;page-break-before:always}'+
+    '.fl-stripe{height:5px;background:#f0c040;margin-bottom:18px;border-radius:2px}'+
+    '.fl h2{font-size:20px;font-weight:900;margin:0 0 4px}'+
+    '.fl .meta{font-size:12px;color:#999;margin:0 0 14px}'+
+    '.plan-box{border:1px solid #ddd;border-radius:6px;overflow:hidden;margin-bottom:6px}'+
+    '.plan-box img{width:100%;display:block}'+
+    '.leg{display:flex;gap:18px;font-size:11px;color:#888;margin-bottom:6px}'+
+    '.leg span{display:flex;align-items:center;gap:5px}'+
+    '.dot{width:10px;height:10px;border-radius:50%;display:inline-block}'+
+    '.plan-cap{font-size:10px;color:#bbb;margin-bottom:18px}'+
+    '.ph-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#b08900;border-bottom:2px solid #f0c040;padding-bottom:5px;margin:0 0 12px}'+
+    '.phgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}'+
+    '.phitem{break-inside:avoid;page-break-inside:avoid}'+
+    '.phitem img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:5px;border:1px solid #e0e0e0;display:block}'+
+    '.phcap{font-size:11px;margin-top:5px;color:#555;display:flex;align-items:center;gap:6px}'+
+    '.badge{background:#f0c040;color:#111;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:900}'+
+    '.nophoto{color:#ccc;font-style:italic;font-size:13px;margin:8px 0 18px}';
+
+  var html='<style>@page{margin:12mm 14mm}'+css+'</style>';
+  html+='<div class="fc-wrap">';
+
+  /* copertina */
+  html+='<div class="cover"><div class="stripe"></div>'+
+    '<h1>'+hesc(title)+'</h1>'+
+    '<div class="sub">Fascicolo Tecnico di Sopralluogo</div>'+
+    '<div class="date">Data: '+dateStr+'</div>'+
+    '<div class="summ"><h3>Piani inclusi nel fascicolo</h3>'+
+    S.floors.map(function(f){
+      var pc=Object.keys(f.photos).length;
+      return '<div class="srow">&#9679;&nbsp;<strong>'+hesc(f.name)+'</strong>&nbsp;&mdash;&nbsp;'+f.markers.length+' punti&nbsp;&middot;&nbsp;'+pc+' foto</div>';
+    }).join('')+'</div></div>';
+
+  /* piani */
+  S.floors.forEach(function(f){
+    var pc=Object.keys(f.photos).length;
+    html+='<div class="fl"><div class="fl-stripe"></div>'+
+      '<h2>'+hesc(f.name)+'</h2>'+
+      '<div class="meta">'+f.markers.length+' punti di presa &middot; '+pc+' fotografi'+(pc===1?'a':'e')+'</div>';
+    if(annotated[f.id]){
+      html+='<div class="plan-box"><img src="'+annotated[f.id]+'"></div>'+
+        '<div class="leg"><span><span class="dot" style="background:#2ab86a"></span>Con foto</span>'+
+        '<span><span class="dot" style="background:#d4a800"></span>Senza foto</span></div>'+
+        '<div class="plan-cap">Planimetria annotata — '+hesc(f.name)+'</div>';
+    }
+    var wp=f.markers.filter(function(m){return f.photos[m.id];});
+    if(wp.length){
+      html+='<div class="ph-title">Fotografie &mdash; '+wp.length+' scattate</div><div class="phgrid">';
+      wp.forEach(function(m){
+        html+='<div class="phitem"><img src="'+f.photos[m.id]+'">'+
+          '<div class="phcap"><span class="badge">#'+m.num+'</span>Punto di presa '+m.num+'</div></div>';
+      });
+      html+='</div>';
+    }else{
+      html+='<div class="nophoto">Nessuna foto associata.</div>';
+    }
+    html+='</div>';
+  });
+
+  html+='</div>';
+  document.getElementById('fascicoloBody').innerHTML=html;
+}
+
+/* ══ UTILS ══ */
+function pad(n){return n<10?'0'+n:String(n);}
+function hesc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(msg){
+  var t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');
+  clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('on');},3800);
+}
+function spinShow(m){document.getElementById('spmsg').textContent=m||'Elaborazione…';document.getElementById('spov').classList.add('on');}
+function spinHide(){document.getElementById('spov').classList.remove('on');}
+
+/* ══ PDF.JS ══ */
+(function(){
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  s.onload=function(){if(typeof pdfjsLib!=='undefined')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';};
+  document.head.appendChild(s);
+})();
+
+renderList();
+</script>
+</body>
+</html>
