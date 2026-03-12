@@ -522,33 +522,74 @@ function renderFascicolo(title,annotated){
   var now=new Date();
   var ds=now.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
   var css=
+    /* reset e base */
     '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}'+
-    '.fc{color:#111;background:#fff;font-size:13px}'+
-    '.cover{padding:32px 32px 24px}'+
-    '.stripe{height:8px;background:#f0c040;margin-bottom:28px;border-radius:2px}'+
-    'h1{font-size:26px;font-weight:900;margin:0 0 8px;line-height:1.2}'+
-    '.sub{font-size:14px;color:#555;margin-bottom:4px}'+
-    '.date{font-size:12px;color:#999;margin-bottom:26px}'+
-    '.summ{background:#f6f6f6;border-radius:8px;padding:14px 18px}'+
-    '.summ h3{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999;margin:0 0 10px}'+
-    '.srow{padding:6px 0;border-bottom:1px solid #eaeaea;font-size:13px;color:#333}'+
+
+    /* contenitore principale */
+    '.fc{color:#111;background:#fff;font-size:12px;line-height:1.5}'+
+
+    /* ── COPERTINA ── */
+    '.cover{padding:28mm 20mm 20mm;page-break-after:always}'+
+    '.stripe{height:8px;background:#f0c040;margin-bottom:24px;border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.cover h1{font-size:26pt;font-weight:900;margin:0 0 8px;line-height:1.2;color:#111}'+
+    '.sub{font-size:13pt;color:#555;margin-bottom:4px}'+
+    '.date{font-size:10pt;color:#999;margin-bottom:24px}'+
+    '.summ{background:#f6f6f6;border-radius:6px;padding:12px 16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.summ h3{font-size:8pt;text-transform:uppercase;letter-spacing:.08em;color:#999;margin:0 0 10px;font-weight:700}'+
+    '.srow{padding:5px 0;border-bottom:1px solid #eaeaea;font-size:11pt;color:#333}'+
     '.srow:last-child{border:none}'+
-    '.fl{padding:28px 32px 20px}'+
-    '.fl-stripe{height:5px;background:#f0c040;margin-bottom:18px;border-radius:2px}'+
-    'h2{font-size:20px;font-weight:900;margin:0 0 4px}'+
-    '.meta{font-size:12px;color:#999;margin:0 0 14px}'+
-    '.plan-box{border:1px solid #ddd;border-radius:6px;overflow:hidden;margin-bottom:6px}'+
-    '.plan-box img{width:100%;display:block}'+
-    '.leg{display:flex;gap:18px;font-size:11px;color:#888;margin-bottom:6px}'+
-    '.leg span{display:flex;align-items:center;gap:5px}'+
-    '.dot{width:10px;height:10px;border-radius:50%;display:inline-block}'+
-    '.plan-cap{font-size:10px;color:#bbb;margin-bottom:18px}'+
-    '.ph-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#b08900;border-bottom:2px solid #f0c040;padding-bottom:5px;margin:0 0 12px}'+
-    '.phgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}'+
-    '.phitem img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:5px;border:1px solid #e0e0e0;display:block}'+
-    '.phcap{font-size:11px;margin-top:5px;color:#555;display:flex;align-items:center;gap:6px}'+
-    '.badge{background:#f0c040;color:#111;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:900}'+
-    '.nophoto{color:#ccc;font-style:italic;font-size:13px;margin:8px 0 18px}';
+
+    /* ── PAGINA PIANO ──
+       Ogni piano occupa la sua pagina A4 (margini 14mm).
+       Area utile ≈ 182mm × 257mm  */
+    '.fl{'+
+      'padding:14mm 14mm 10mm;'+
+      'page-break-before:always;'+
+    '}'+
+    '.fl-stripe{height:5px;background:#f0c040;margin-bottom:14px;border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.fl h2{font-size:18pt;font-weight:900;margin:0 0 3px;color:#111}'+
+    '.meta{font-size:9pt;color:#999;margin:0 0 12px}'+
+
+    /* planimetria: larghezza 100% area utile, altezza max circa 120mm così rimane spazio per le foto */
+    '.plan-box{border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:5px;width:100%;max-height:120mm;display:flex;align-items:center;justify-content:center;background:#fff}'+
+    '.plan-box img{width:100%;max-height:120mm;object-fit:contain;display:block}'+
+
+    '.leg{display:flex;gap:16px;font-size:8pt;color:#888;margin-bottom:4px}'+
+    '.leg span{display:flex;align-items:center;gap:4px}'+
+    '.dot{width:8px;height:8px;border-radius:50%;display:inline-block;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.plan-cap{font-size:7pt;color:#bbb;margin-bottom:14px}'+
+
+    /* ── FOTO ──
+       Griglia 2 colonne, ogni foto max 15cm di larghezza.
+       Su A4 con margini 14mm, area utile = 182mm.
+       2 col con gap 10mm → ogni col ≈ 86mm ≈ 8.6cm (< 15cm OK).
+       Per sicurezza forziamo max-width:15cm anche sull'immagine. */
+    '.ph-title{'+
+      'font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;'+
+      'color:#b08900;border-bottom:2px solid #f0c040;padding-bottom:4px;margin:0 0 10px;'+
+      '-webkit-print-color-adjust:exact;print-color-adjust:exact'+
+    '}'+
+    '.phgrid{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-bottom:12px}'+
+    '.phitem{break-inside:avoid;page-break-inside:avoid}'+
+    '.phitem img{'+
+      'width:100%;'+
+      'max-width:15cm;'+
+      'aspect-ratio:4/3;'+
+      'object-fit:cover;'+
+      'border-radius:3px;'+
+      'border:1px solid #e0e0e0;'+
+      'display:block'+
+    '}'+
+    '.phcap{font-size:8pt;margin-top:4px;color:#555;display:flex;align-items:center;gap:5px}'+
+    '.badge{background:#f0c040;color:#111;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.nophoto{color:#ccc;font-style:italic;font-size:10pt;margin:6px 0 14px}'+
+
+    /* stampa */
+    '@page{margin:14mm}'+
+    '@media print{'+
+      'html,body{background:#fff!important;color:#111!important}'+
+      '.fc{background:#fff!important;color:#111!important}'+
+    '}';
 
   /* Salva HTML e CSS per la stampa */
   S._fascicoloCSS = css;
