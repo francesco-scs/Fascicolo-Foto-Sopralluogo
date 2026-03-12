@@ -226,7 +226,7 @@ canvas#fc{display:block;touch-action:none}
 
   <!-- Pulsante stampa prominente — sparisce in stampa -->
   <div id="fascicoloPrintBtn" style="padding:14px 16px;background:#1a1a1a;border-bottom:2px solid #f0c040">
-    <button class="btn btn-y" style="font-size:16px;padding:15px" onclick="window.print()">
+    <button class="btn btn-y" style="font-size:16px;padding:15px" onclick="stampaFascicolo()">
       🖨 Stampa / Salva come PDF
     </button>
     <div style="font-size:12px;color:#555;text-align:center;margin-top:8px;line-height:1.5">
@@ -327,7 +327,25 @@ function showScreen(id){
   document.getElementById(id).classList.add('on');
   window.scrollTo(0,0);
 }
-function goHome(){stopAddMk();stopRotMode();closeAllModals();showScreen('scHome');renderList();}
+function goHome(){stopAddMk();stopRotMode();closeAllModals();showScreen('scHome');/* ══ STAMPA IN FINESTRA PULITA ══ */
+function stampaFascicolo(){
+  var body = document.getElementById('fascicoloBody').innerHTML;
+  var win = window.open('','_blank','');
+  if(!win){ toast('Abilita i popup per stampare'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>Fascicolo</title>'+
+    '<style>'+
+    '*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111;font-size:13px}'+
+    '@page{margin:12mm 14mm}'+
+    '</style>'+
+    '</head><body>'+body+'</body></html>');
+  win.document.close();
+  win.onload = function(){ win.print(); };
+}
+
+renderList();}
 function goCanvas(){closeAllModals();showScreen('scCanvas');}
 function goPhotos(){
   var f=cur();if(!f)return;
