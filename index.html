@@ -522,100 +522,119 @@ function renderFascicolo(title,annotated){
   var now=new Date();
   var ds=now.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
   var css=
-    /* reset e base */
-    '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}'+
-
-    /* contenitore principale */
-    '.fc{color:#111;background:#fff;font-size:12px;line-height:1.5}'+
+    '@page{margin:14mm}'+
+    '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.fc{color:#111;background:#fff;font-size:11pt;line-height:1.6}'+
 
     /* ── COPERTINA ── */
-    '.cover{padding:28mm 20mm 20mm;page-break-after:always}'+
-    '.stripe{height:8px;background:#f0c040;margin-bottom:24px;border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.cover h1{font-size:26pt;font-weight:900;margin:0 0 8px;line-height:1.2;color:#111}'+
-    '.sub{font-size:13pt;color:#555;margin-bottom:4px}'+
-    '.date{font-size:10pt;color:#999;margin-bottom:24px}'+
-    '.summ{background:#f6f6f6;border-radius:6px;padding:12px 16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.summ h3{font-size:8pt;text-transform:uppercase;letter-spacing:.08em;color:#999;margin:0 0 10px;font-weight:700}'+
-    '.srow{padding:5px 0;border-bottom:1px solid #eaeaea;font-size:11pt;color:#333}'+
+    '.cover{padding:0;page-break-after:always}'+
+
+    /* Fascia hero — sfondo scuro con titolo bianco */
+    '.cover-hero{background:#1a1a2e;padding:28mm 20mm 20mm;margin-bottom:0}'+
+    '.cover-hero h1{font-size:28pt;font-weight:900;color:#ffffff;margin:0 0 6px;line-height:1.2}'+
+    '.cover-hero .sub{font-size:13pt;color:#f0c040;margin-bottom:6px;font-weight:600}'+
+    '.cover-hero .date{font-size:10pt;color:#aaa;margin:0}'+
+
+    /* Striscia dorata sotto l hero */
+    '.cover-stripe{height:6px;background:#f0c040;margin-bottom:20mm}'+
+
+    /* Riepilogo piani */
+    '.summ{margin:0 20mm;background:#f8f8f8;border-left:4px solid #f0c040;border-radius:0 6px 6px 0;padding:14px 18px}'+
+    '.summ h3{font-size:8pt;text-transform:uppercase;letter-spacing:.1em;color:#999;margin:0 0 12px;font-weight:700}'+
+    '.srow{padding:7px 0;border-bottom:1px solid #e8e8e8;font-size:11pt;color:#333;display:flex;align-items:center;gap:8px}'+
     '.srow:last-child{border:none}'+
+    '.srow-dot{width:8px;height:8px;border-radius:50%;background:#f0c040;flex-shrink:0}'+
 
-    /* ── PAGINA PIANO ──
-       Ogni piano occupa la sua pagina A4 (margini 14mm).
-       Area utile ≈ 182mm × 257mm  */
-    '.fl{'+
-      'padding:14mm 14mm 10mm;'+
-      'page-break-before:always;'+
-    '}'+
-    '.fl-stripe{height:5px;background:#f0c040;margin-bottom:14px;border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.fl h2{font-size:18pt;font-weight:900;margin:0 0 3px;color:#111}'+
-    '.meta{font-size:9pt;color:#999;margin:0 0 12px}'+
+    /* ── INTESTAZIONE PAGINA PIANO ── */
+    '.fl{padding:0;page-break-before:always}'+
 
-    /* planimetria: larghezza 100% area utile, altezza max circa 120mm così rimane spazio per le foto */
-    '.plan-box{border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:5px;width:100%;max-height:120mm;display:flex;align-items:center;justify-content:center;background:#fff}'+
-    '.plan-box img{width:100%;max-height:120mm;object-fit:contain;display:block}'+
+    /* Fascia header piano — sfondo scuro */
+    '.fl-header{background:#1a1a2e;padding:10mm 14mm 8mm}'+
+    '.fl-header h2{font-size:20pt;font-weight:900;color:#ffffff;margin:0 0 2px}'+
+    '.fl-header .meta{font-size:9pt;color:#f0c040;margin:0;font-weight:600}'+
+    '.fl-stripe{height:4px;background:#f0c040;margin-bottom:10mm}'+
 
-    '.leg{display:flex;gap:16px;font-size:8pt;color:#888;margin-bottom:4px}'+
+    /* Contenuto piano */
+    '.fl-body{padding:0 14mm 10mm}'+
+
+    /* Planimetria */
+    '.plan-box{border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:5px;width:100%;max-height:115mm;display:flex;align-items:center;justify-content:center;background:#fff}'+
+    '.plan-box img{width:100%;max-height:115mm;object-fit:contain;display:block}'+
+    '.leg{display:flex;gap:16px;font-size:8pt;color:#888;margin-bottom:3px;margin-top:4px}'+
     '.leg span{display:flex;align-items:center;gap:4px}'+
-    '.dot{width:8px;height:8px;border-radius:50%;display:inline-block;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.plan-cap{font-size:7pt;color:#bbb;margin-bottom:14px}'+
+    '.dot{width:8px;height:8px;border-radius:50%;display:inline-block}'+
+    '.plan-cap{font-size:7pt;color:#ccc;margin-bottom:10mm;font-style:italic}'+
 
-    /* ── FOTO ──
-       Griglia 2 colonne, ogni foto max 15cm di larghezza.
-       Su A4 con margini 14mm, area utile = 182mm.
-       2 col con gap 10mm → ogni col ≈ 86mm ≈ 8.6cm (< 15cm OK).
-       Per sicurezza forziamo max-width:15cm anche sull'immagine. */
+    /* Sezione foto */
     '.ph-title{'+
-      'font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;'+
-      'color:#b08900;border-bottom:2px solid #f0c040;padding-bottom:4px;margin:0 0 10px;'+
-      '-webkit-print-color-adjust:exact;print-color-adjust:exact'+
+      'font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;'+
+      'color:#b08900;border-bottom:2px solid #f0c040;padding-bottom:4px;margin:0 0 8mm'+
     '}'+
-    '.phgrid{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-bottom:12px}'+
+    '.phgrid{display:grid;grid-template-columns:1fr 1fr;gap:8mm;margin-bottom:10mm}'+
     '.phitem{break-inside:avoid;page-break-inside:avoid}'+
-    '.phitem img{'+
-      'width:100%;'+
-      'max-width:15cm;'+
-      'aspect-ratio:4/3;'+
-      'object-fit:cover;'+
-      'border-radius:3px;'+
-      'border:1px solid #e0e0e0;'+
-      'display:block'+
-    '}'+
+    '.phitem img{width:100%;max-width:15cm;aspect-ratio:4/3;object-fit:cover;border-radius:3px;border:1px solid #e0e0e0;display:block}'+
     '.phcap{font-size:8pt;margin-top:4px;color:#555;display:flex;align-items:center;gap:5px}'+
-    '.badge{background:#f0c040;color:#111;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.nophoto{color:#ccc;font-style:italic;font-size:10pt;margin:6px 0 14px}'+
+    '.badge{background:#f0c040;color:#111;border-radius:3px;padding:1px 7px;font-size:7pt;font-weight:900}'+
+    '.nophoto{color:#bbb;font-style:italic;font-size:10pt;margin:4px 0 12mm}'+
 
-    /* stampa */
-    '@page{margin:14mm}'+
-    '@media print{'+
-      'html,body{background:#fff!important;color:#111!important}'+
-      '.fc{background:#fff!important;color:#111!important}'+
-    '}';
+    '@media print{html,body,.fc{background:#fff!important;color:#111!important}}';
 
   /* Salva HTML e CSS per la stampa */
   S._fascicoloCSS = css;
   S._fascicoloTitle = title;
 
   var html='<div class="fc">';
-  html+='<div class="cover"><div class="stripe"></div><h1>'+hesc(title)+'</h1><div class="sub">Fascicolo Tecnico di Sopralluogo</div><div class="date">Data: '+ds+'</div>'+
-    '<div class="summ"><h3>Piani inclusi nel fascicolo</h3>'+
-    S.floors.map(function(f){var pc=Object.keys(f.photos).length;return '<div class="srow">&#9679;&nbsp;<strong>'+hesc(f.name)+'</strong>&nbsp;&mdash;&nbsp;'+f.markers.length+' punti&nbsp;&middot;&nbsp;'+pc+' foto</div>';}).join('')+
-    '</div></div>';
+  html+=
+    '<div class="cover">'+
+      '<div class="cover-hero">'+
+        '<h1>'+hesc(title)+'</h1>'+
+        '<div class="sub">Fascicolo Tecnico di Sopralluogo</div>'+
+        '<div class="date">'+ds+'</div>'+
+      '</div>'+
+      '<div class="cover-stripe"></div>'+
+      '<div class="summ">'+
+        '<h3>Piani inclusi nel fascicolo</h3>'+
+        S.floors.map(function(f){
+          var pc=Object.keys(f.photos).length;
+          return '<div class="srow"><span class="srow-dot"></span><strong>'+hesc(f.name)+'</strong>&nbsp;&mdash;&nbsp;'+f.markers.length+' punti di presa&nbsp;&middot;&nbsp;'+pc+' foto</div>';
+        }).join('')+
+      '</div>'+
+    '</div>';
 
   S.floors.forEach(function(f){
     var pc=Object.keys(f.photos).length;
-    html+='<div class="fl"><div class="fl-stripe"></div><h2>'+hesc(f.name)+'</h2><div class="meta">'+f.markers.length+' punti di presa &middot; '+pc+' fotografi'+(pc===1?'a':'e')+'</div>';
+    html+=
+      '<div class="fl">'+
+        '<div class="fl-header">'+
+          '<h2>'+hesc(f.name)+'</h2>'+
+          '<div class="meta">'+f.markers.length+' punti di presa &middot; '+pc+' fotografi'+(pc===1?'a':'e')+'</div>'+
+        '</div>'+
+        '<div class="fl-stripe"></div>'+
+        '<div class="fl-body">';
     if(annotated[f.id]){
-      html+='<div class="plan-box"><img src="'+annotated[f.id]+'"></div>'+
-        '<div class="leg"><span><span class="dot" style="background:#2ab86a"></span>Con foto</span><span><span class="dot" style="background:#d4a800"></span>Senza foto</span></div>'+
-        '<div class="plan-cap">Planimetria annotata — '+hesc(f.name)+'</div>';
+      html+=
+        '<div class="plan-box"><img src="'+annotated[f.id]+'"></div>'+
+        '<div class="leg">'+
+          '<span><span class="dot" style="background:#2ab86a"></span>Con foto</span>'+
+          '<span><span class="dot" style="background:#d4a800"></span>Senza foto</span>'+
+        '</div>'+
+        '<div class="plan-cap">Planimetria annotata &mdash; '+hesc(f.name)+'</div>';
     }
     var wp=f.markers.filter(function(m){return f.photos[m.id];});
     if(wp.length){
       html+='<div class="ph-title">Fotografie &mdash; '+wp.length+' scattate</div><div class="phgrid">';
-      wp.forEach(function(m){html+='<div class="phitem"><img src="'+f.photos[m.id]+'"><div class="phcap"><span class="badge">#'+m.num+'</span>Punto di presa '+m.num+'</div></div>';});
+      wp.forEach(function(m){
+        html+=
+          '<div class="phitem">'+
+            '<img src="'+f.photos[m.id]+'">'+
+            '<div class="phcap"><span class="badge">#'+m.num+'</span>Punto di presa '+m.num+'</div>'+
+          '</div>';
+      });
       html+='</div>';
-    }else{html+='<div class="nophoto">Nessuna foto associata.</div>';}
-    html+='</div>';
+    }else{
+      html+='<div class="nophoto">Nessuna foto associata.</div>';
+    }
+    html+='</div></div>';
   });
   html+='</div>';
   document.getElementById('fascicoloBody').innerHTML=html;
