@@ -491,7 +491,7 @@ function annotateFloor(f,cb){
     var ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.drawImage(img,0,0,W,H);
     var sx=W/img.naturalWidth;
     f.markers.forEach(function(m){
-      var mx=m.x*sx,my=m.y*sx,col=f.photos[m.id]?'#2ab86a':'#d4a800',r=18,ah=26,sc=m.scale||1;
+      var mx=m.x*sx,my=m.y*sx,col=f.photos[m.id]?'#3ddc84':'#f0c040',r=18,ah=26,sc=m.scale||1;
       ctx.save();ctx.translate(mx,my);ctx.rotate((m.rot||0)*Math.PI/180);ctx.scale(sc,sc);
       ctx.shadowColor='rgba(0,0,0,.5)';ctx.shadowBlur=10;ctx.fillStyle=col;
       ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-8,-ah);ctx.lineTo(8,-ah);ctx.closePath();ctx.fill();
@@ -519,198 +519,221 @@ function doGenPDF(){
 }
 
 function renderFascicolo(title,annotated){
-  var now=new Date();
-  var ds=now.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+  var now = new Date();
+  var ds  = now.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
 
-  /* ══════════════════════════════════════════════════
-     CSS — tutto in mm, A4 = 210×297mm, margini = 0
-     Area utile con padding 14mm → 182×269mm
-  ══════════════════════════════════════════════════ */
-  var css=
-    '@page{size:A4 portrait;margin:0}'+
+  /* ─────────────────────────────────────────────────────────
+     CSS — A4 210×297 mm, margin:0, tutto in mm
+     COLORI MARKER:  verde #3ddc84 = con foto
+                     giallo #f0c040 = senza foto
+  ───────────────────────────────────────────────────────── */
+  var css = [
+    '@page { size:A4 portrait; margin:0 }',
 
-    /* reset base */
-    '*{box-sizing:border-box;margin:0;padding:0;'+
-      'font-family:Arial,Helvetica,sans-serif;'+
-      '-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    'html,body{background:#fff;color:#111;font-size:10pt;line-height:1.5}'+
-    '.fc{background:#fff;color:#111}'+
+    '* { box-sizing:border-box; margin:0; padding:0;',
+    '    font-family:Arial,Helvetica,sans-serif;',
+    '    -webkit-print-color-adjust:exact; print-color-adjust:exact }',
 
-    /* ── PAGINE generali ── */
-    /* ogni .page è un foglio A4 esatto */
-    '.page{width:210mm;min-height:297mm;page-break-after:always;'+
-      'display:flex;flex-direction:column;overflow:hidden}'+
-    '.page:last-child{page-break-after:auto}'+
+    'html,body { background:#fff; color:#111; font-size:10pt; line-height:1.5 }',
+    '.fc { background:#fff; color:#111 }',
+
+    /* ogni .page = un foglio A4 */
+    '.page { width:210mm; min-height:297mm; page-break-after:always;',
+    '        display:flex; flex-direction:column; overflow:hidden }',
+    '.page:last-child { page-break-after:auto }',
 
     /* ── COPERTINA ── */
-    /* Hero occupa circa metà pagina */
-    '.cv-hero{background:#1c2340;padding:28mm 18mm 18mm;flex-shrink:0}'+
-    '.cv-hero h1{font-size:26pt;font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15}'+
-    '.cv-hero .cv-sub{font-size:11.5pt;color:#f0c040;font-weight:700;margin:0 0 18px}'+
-    '.cv-hero .cv-date{font-size:9pt;color:#7a8db0;margin:0}'+
-    '.cv-stripe{height:6px;background:#f0c040;flex-shrink:0}'+
-    '.cv-body{padding:14mm 18mm;flex:1}'+
-    '.cv-list-label{font-size:7pt;text-transform:uppercase;'+
-      'letter-spacing:.12em;color:#aaa;font-weight:700;margin-bottom:10px}'+
-    '.cv-list{border-left:4px solid #f0c040;background:#f8f8f8;'+
-      'border-radius:0 5px 5px 0;padding:0 14px}'+
-    '.cv-row{display:flex;align-items:center;gap:10px;'+
-      'padding:8px 0;border-bottom:1px solid #eaeaea;font-size:10pt;color:#222}'+
-    '.cv-row:last-child{border:none}'+
-    '.cv-dot{width:9px;height:9px;border-radius:50%;'+
-      'background:#f0c040;flex-shrink:0}'+
-    '.cv-row strong{color:#111;font-weight:700}'+
-    '.cv-row-meta{color:#888;font-size:8.5pt;margin-left:auto}'+
+    '.cv-hero { background:#1c2340; padding:30mm 18mm 0 18mm; flex-shrink:0 }',
+    '.cv-hero h1 { font-size:26pt; font-weight:900; color:#fff;',
+    '              line-height:1.15; margin-bottom:8mm }',   /* SPAZIO dopo titolo */
+    '.cv-sub  { font-size:11.5pt; color:#f0c040; font-weight:700;',
+    '           margin-bottom:5mm }',                         /* SPAZIO dopo sottotitolo */
+    '.cv-date { font-size:9pt; color:#7a8db0; padding-bottom:14mm }',
+    '.cv-stripe { height:6px; background:#f0c040; flex-shrink:0 }',
+    '.cv-body { padding:12mm 18mm; flex:1 }',
+    '.cv-list-lbl { font-size:7pt; text-transform:uppercase; letter-spacing:.12em;',
+    '               color:#aaa; font-weight:700; margin-bottom:6mm }', /* SPAZIO dopo label */
+    '.cv-list { border-left:4px solid #f0c040; background:#f8f8f8;',
+    '           border-radius:0 5px 5px 0; padding:0 14px }',
+    '.cv-row { display:flex; align-items:center; gap:10px;',
+    '          padding:7px 0; border-bottom:1px solid #eaeaea;',
+    '          font-size:10pt; color:#222 }',
+    '.cv-row:last-child { border:none }',
+    '.cv-dot { width:9px; height:9px; border-radius:50%;',
+    '          background:#f0c040; flex-shrink:0 }',
+    '.cv-row strong { color:#111; font-weight:700 }',
+    '.cv-row-meta { color:#888; font-size:8.5pt; margin-left:auto }',
 
     /* ── PAGINA PLANIMETRIA ── */
-    '.fp-header{background:#1c2340;padding:7mm 14mm 6mm;flex-shrink:0}'+
-    '.fp-header h2{font-size:17pt;font-weight:900;color:#fff;margin:0 0 2px}'+
-    '.fp-header .fp-meta{font-size:8.5pt;color:#f0c040;font-weight:600;margin:0}'+
-    '.fp-stripe{height:4px;background:#f0c040;flex-shrink:0}'+
-    '.fp-body{padding:7mm 14mm 6mm;flex:1;display:flex;flex-direction:column}'+
-    '.fp-plan-label{font-size:7pt;text-transform:uppercase;letter-spacing:.1em;'+
-      'color:#aaa;font-weight:700;margin-bottom:5px}'+
-    /* Planimetria: prende tutto lo spazio disponibile nella pagina */
-    '.fp-plan-box{flex:1;border:1px solid #ddd;border-radius:4px;overflow:hidden;'+
-      'display:flex;align-items:center;justify-content:center;background:#fafafa;'+
-      'min-height:0}'+/* min-height:0 è critico per flex shrink */
-    '.fp-plan-box img{max-width:100%;max-height:100%;object-fit:contain;display:block}'+
-    '.fp-leg{display:flex;gap:16px;font-size:8pt;margin-top:5px;flex-shrink:0}'+
-    '.fp-leg span{display:flex;align-items:center;gap:4px}'+
-    '.fp-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}'+
-    '.fp-leg .lgreen{color:#1d8a4a;font-weight:600}'+
-    '.fp-leg .lamber{color:#b08900;font-weight:600}'+
-    '.fp-cap{font-size:6.5pt;color:#bbb;font-style:italic;margin-top:2px;flex-shrink:0}'+
+    '.fp-header { background:#1c2340; padding:8mm 14mm 0 14mm; flex-shrink:0 }',
+    '.fp-header h2 { font-size:17pt; font-weight:900; color:#fff;',
+    '                margin-bottom:4mm }',                    /* SPAZIO dopo titolo */
+    '.fp-meta { font-size:8.5pt; color:#f0c040; font-weight:600;',
+    '           padding-bottom:7mm }',                        /* SPAZIO dopo sottotitolo */
+    '.fp-stripe { height:4px; background:#f0c040; flex-shrink:0 }',
+    '.fp-body { padding:7mm 14mm 6mm; flex:1; display:flex; flex-direction:column }',
+    '.fp-plan-lbl { font-size:7pt; text-transform:uppercase; letter-spacing:.1em;',
+    '               color:#aaa; font-weight:700; margin-bottom:4mm }', /* SPAZIO */
+    '.fp-plan-box { flex:1; border:1px solid #ddd; border-radius:4px; overflow:hidden;',
+    '               display:flex; align-items:center; justify-content:center;',
+    '               background:#fafafa; min-height:0 }',
+    '.fp-plan-box img { max-width:100%; max-height:100%; object-fit:contain; display:block }',
 
-    /* ── PAGINA FOTO (4 per foglio) ── */
-    '.ph-header{background:#1c2340;padding:5mm 14mm 4mm;flex-shrink:0}'+
-    '.ph-header h3{font-size:12pt;font-weight:900;color:#fff;margin:0 0 1px}'+
-    '.ph-header .ph-meta{font-size:8pt;color:#f0c040;font-weight:600;margin:0}'+
-    '.ph-stripe{height:3px;background:#f0c040;flex-shrink:0}'+
-    '.ph-body{padding:5mm 14mm 5mm;flex:1;display:grid;'+
-      'grid-template-rows:130mm 130mm;grid-template-columns:1fr 1fr;'+
-      'gap:5mm}'+
-    '.ph-item{display:flex;flex-direction:column;height:130mm;overflow:hidden}'+
-    '.ph-item img{width:100%;height:118mm;object-fit:cover;'+
-      'display:block;border-radius:4px;border:1px solid #e0e0e0;flex-shrink:0}'+
-    '.ph-cap{font-size:7.5pt;color:#555;margin-top:4px;flex-shrink:0;'+
-      'display:flex;align-items:center;gap:5px}'+
-    '.badge{background:#f0c040;color:#111;border-radius:3px;'+
-      'padding:1px 6px;font-size:7pt;font-weight:900;letter-spacing:.02em}'+
+    /* legenda — verde e giallo esatti come i marker */
+    '.fp-leg { display:flex; gap:18px; font-size:8.5pt;',
+    '          margin-top:5mm; flex-shrink:0 }',             /* SPAZIO sopra legenda */
+    '.fp-leg span { display:flex; align-items:center; gap:5px }',
+    '.fp-dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0 }',
+    '.lgreen { color:#1a8c40; font-weight:700 }',            /* verde scuro leggibile */
+    '.lamber { color:#9a6e00; font-weight:700 }',            /* giallo scuro leggibile */
+    '.fp-cap { font-size:6.5pt; color:#bbb; font-style:italic; margin-top:2mm; flex-shrink:0 }',
 
-    /* print */
-    '@media print{'+
-      '.page{page-break-after:always}'+
-      '.page:last-child{page-break-after:auto}'+
-      'html,body,.fc{background:#fff;color:#111}'+
-      '.cv-hero,.fp-header,.ph-header{background:#1c2340}'+
-      '.cv-hero h1,.fp-header h2,.ph-header h3{color:#fff}'+
-      '.cv-hero .cv-sub,.fp-header .fp-meta,.ph-header .ph-meta{color:#f0c040}'+
-      '.cv-stripe,.fp-stripe,.ph-stripe{background:#f0c040}'+
-      '.cv-dot{background:#f0c040}'+
-      '.badge{background:#f0c040;color:#111}'+
-      '.lgreen{color:#1d8a4a}'+
-      '.lamber{color:#b08900}'+
-      '.cv-list{background:#f8f8f8}'+
-    '}';
+    /* ── PAGINE FOTO (2 per foglio) ── */
+    '.ph-header { background:#1c2340; padding:7mm 14mm 0 14mm; flex-shrink:0 }',
+    '.ph-header h3 { font-size:13pt; font-weight:900; color:#fff; margin-bottom:3mm }', /* SPAZIO */
+    '.ph-meta { font-size:8pt; color:#f0c040; font-weight:600; padding-bottom:6mm }',   /* SPAZIO */
+    '.ph-stripe { height:3px; background:#f0c040; flex-shrink:0 }',
+    '.ph-body { padding:8mm 14mm 8mm; flex:1; display:flex;',
+    '           flex-direction:column; gap:8mm; justify-content:center }',
+    '.ph-item { display:flex; flex-direction:column; align-items:flex-start }',
+    '.ph-item img { width:auto; height:auto; max-width:20cm; max-height:15cm;',
+    '               object-fit:contain; display:block;',
+    '               border-radius:4px; border:1px solid #e0e0e0 }',
+    '.ph-cap { font-size:8pt; color:#555; margin-top:3mm;',
+    '          display:flex; align-items:center; gap:6px }',
+    '.badge { background:#f0c040; color:#111; border-radius:3px;',
+    '         padding:2px 7px; font-size:7.5pt; font-weight:900 }',
 
-  S._fascicoloCSS = css;
+    /* stampa — replica tutti i colori con selettori specifici */
+    '@media print {',
+    '  html,body,.fc { background:#fff; color:#111 }',
+    '  .cv-hero,.fp-header,.ph-header { background:#1c2340 }',
+    '  .cv-hero h1,.fp-header h2,.ph-header h3 { color:#fff }',
+    '  .cv-sub,.fp-meta,.ph-meta { color:#f0c040 }',
+    '  .cv-date { color:#7a8db0 }',
+    '  .cv-stripe,.fp-stripe,.ph-stripe { background:#f0c040 }',
+    '  .cv-dot { background:#f0c040 }',
+    '  .cv-list { background:#f8f8f8 }',
+    '  .badge { background:#f0c040; color:#111 }',
+    '  .lgreen { color:#1a8c40 }',
+    '  .lamber { color:#9a6e00 }',
+    '  .page { page-break-after:always }',
+    '  .page:last-child { page-break-after:auto }',
+    '}'
+  ].join(' ');
+
+  S._fascicoloCSS   = css;
   S._fascicoloTitle = title;
 
   var out = '<div class="fc">';
 
   /* ══ COPERTINA ══ */
   out +=
-    '<div class="page">'+
-      '<div class="cv-hero">'+
-        '<h1>'+hesc(title)+'</h1>'+
-        '<div class="cv-sub">Fascicolo Tecnico di Sopralluogo</div>'+
-        '<div class="cv-date">'+ds+'</div>'+
-      '</div>'+
-      '<div class="cv-stripe"></div>'+
-      '<div class="cv-body">'+
-        '<div class="cv-list-label">Piani inclusi nel fascicolo</div>'+
-        '<div class="cv-list">'+
+    '<div class="page">' +
+      '<div class="cv-hero">' +
+        '<h1>' + hesc(title) + '</h1>' +
+        '<div class="cv-sub">Fascicolo Tecnico di Sopralluogo</div>' +
+        '<div class="cv-date">' + ds + '</div>' +
+      '</div>' +
+      '<div class="cv-stripe"></div>' +
+      '<div class="cv-body">' +
+        '<div class="cv-list-lbl">Piani inclusi nel fascicolo</div>' +
+        '<div class="cv-list">' +
           S.floors.map(function(f){
-            var pc=Object.keys(f.photos).length;
-            return '<div class="cv-row">'+
-              '<span class="cv-dot"></span>'+
-              '<strong>'+hesc(f.name)+'</strong>'+
-              '<span class="cv-row-meta">'+f.markers.length+' punti &middot; '+pc+' foto</span>'+
+            var pc = Object.keys(f.photos).length;
+            return '<div class="cv-row">' +
+              '<span class="cv-dot"></span>' +
+              '<strong>' + hesc(f.name) + '</strong>' +
+              '<span class="cv-row-meta">' + f.markers.length + ' punti &middot; ' + pc + ' foto</span>' +
             '</div>';
-          }).join('')+
-        '</div>'+
-      '</div>'+
+          }).join('') +
+        '</div>' +
+      '</div>' +
     '</div>';
 
-  /* ══ UN PIANO = 1 pagina planimetria + N pagine foto ══ */
+  /* ══ UN PIANO = 1 pag planimetria + N pag foto ══ */
   S.floors.forEach(function(f){
-    var pc = Object.keys(f.photos).length;
+    var pc      = Object.keys(f.photos).length;
+    var photos  = f.markers.filter(function(m){ return f.photos[m.id]; });
 
     /* ── Pagina planimetria ── */
     out +=
-      '<div class="page">'+
-        '<div class="fp-header">'+
-          '<h2>'+hesc(f.name)+'</h2>'+
-          '<div class="fp-meta">'+f.markers.length+' punti di presa &middot; '+pc+' fotografi'+(pc===1?'a':'e')+'</div>'+
-        '</div>'+
-        '<div class="fp-stripe"></div>'+
-        '<div class="fp-body">'+
-          '<div class="fp-plan-label">Planimetria annotata</div>'+
-          '<div class="fp-plan-box">'+
-            (annotated[f.id]?'<img src="'+annotated[f.id]+'">'  :
-              '<div style="color:#ccc;font-style:italic;font-size:10pt">Nessuna planimetria</div>')+
-          '</div>'+
-          '<div class="fp-leg">'+
-            '<span><span class="fp-dot" style="background:#2ab86a"></span><span class="lgreen">Con foto</span></span>'+
-            '<span><span class="fp-dot" style="background:#d4a800"></span><span class="lamber">Senza foto</span></span>'+
-          '</div>'+
-          '<div class="fp-cap">'+hesc(f.name)+' &mdash; numeri corrispondono ai punti di presa</div>'+
-        '</div>'+
+      '<div class="page">' +
+        '<div class="fp-header">' +
+          '<h2>' + hesc(f.name) + '</h2>' +
+          '<div class="fp-meta">' +
+            f.markers.length + ' punti di presa &middot; ' +
+            pc + ' fotografi' + (pc === 1 ? 'a' : 'e') +
+          '</div>' +
+        '</div>' +
+        '<div class="fp-stripe"></div>' +
+        '<div class="fp-body">' +
+          '<div class="fp-plan-lbl">Planimetria annotata</div>' +
+          '<div class="fp-plan-box">' +
+            (annotated[f.id]
+              ? '<img src="' + annotated[f.id] + '">'
+              : '<div style="color:#ccc;font-style:italic;font-size:10pt;padding:20px">Nessuna planimetria</div>') +
+          '</div>' +
+          /* LEGENDA: pallino #3ddc84 verde / testo verde scuro
+                      pallino #f0c040 giallo / testo giallo scuro */
+          '<div class="fp-leg">' +
+            '<span>' +
+              '<span class="fp-dot" style="background:#3ddc84"></span>' +
+              '<span class="lgreen">Con foto</span>' +
+            '</span>' +
+            '<span>' +
+              '<span class="fp-dot" style="background:#f0c040"></span>' +
+              '<span class="lamber">Senza foto</span>' +
+            '</span>' +
+          '</div>' +
+          '<div class="fp-cap">' + hesc(f.name) + ' &mdash; i numeri corrispondono ai punti di presa</div>' +
+        '</div>' +
       '</div>';
 
-    /* ── Pagine foto: 4 per pagina ── */
-    var photos = f.markers.filter(function(m){return f.photos[m.id];});
-    for(var i=0; i<photos.length; i+=4){
-      var chunk = photos.slice(i, i+4);
-      var pageNum = Math.floor(i/4)+1;
-      var totPages = Math.ceil(photos.length/4);
+    /* ── Pagine foto: 2 per pagina ── */
+    if(photos.length === 0){
       out +=
-        '<div class="page">'+
-          '<div class="ph-header">'+
-            '<h3>'+hesc(f.name)+' &mdash; Fotografie</h3>'+
-            '<div class="ph-meta">Pagina '+pageNum+' di '+totPages+
-              ' &middot; foto '+(i+1)+'\u2013'+Math.min(i+4,photos.length)+
-              ' di '+photos.length+'</div>'+
-          '</div>'+
-          '<div class="ph-stripe"></div>'+
-          '<div class="ph-body">'+
-            chunk.map(function(m){
-              return '<div class="ph-item">'+
-                '<img src="'+f.photos[m.id]+'">'+
-                '<div class="ph-cap">'+
-                  '<span class="badge">#'+m.num+'</span>'+
-                  '<span>Punto di presa '+m.num+'</span>'+
-                '</div>'+
-              '</div>';
-            }).join('')+
-          '</div>'+
+        '<div class="page">' +
+          '<div class="ph-header">' +
+            '<h3>' + hesc(f.name) + ' &mdash; Fotografie</h3>' +
+            '<div class="ph-meta">Nessuna foto associata</div>' +
+          '</div>' +
+          '<div class="ph-stripe"></div>' +
+          '<div class="ph-body" style="align-items:center;justify-content:center">' +
+            '<div style="color:#ccc;font-style:italic;font-size:11pt">' +
+              'Nessuna fotografia acquisita per questo piano.' +
+            '</div>' +
+          '</div>' +
         '</div>';
-    }
-
-    if(!photos.length){
-      /* pagina vuota con messaggio se nessuna foto */
-      out +=
-        '<div class="page">'+
-          '<div class="ph-header">'+
-            '<h3>'+hesc(f.name)+' &mdash; Fotografie</h3>'+
-            '<div class="ph-meta">Nessuna foto associata</div>'+
-          '</div>'+
-          '<div class="ph-stripe"></div>'+
-          '<div class="ph-body" style="display:flex;align-items:center;justify-content:center">'+
-            '<div style="color:#ccc;font-style:italic;font-size:11pt">Nessuna fotografia acquisita per questo piano.</div>'+
-          '</div>'+
-        '</div>';
+    } else {
+      for(var i = 0; i < photos.length; i += 2){
+        var chunk    = photos.slice(i, i + 2);
+        var pageNum  = Math.floor(i / 2) + 1;
+        var totPages = Math.ceil(photos.length / 2);
+        out +=
+          '<div class="page">' +
+            '<div class="ph-header">' +
+              '<h3>' + hesc(f.name) + ' &mdash; Fotografie</h3>' +
+              '<div class="ph-meta">' +
+                'Pagina ' + pageNum + ' di ' + totPages +
+                ' &middot; foto ' + (i + 1) + '–' + Math.min(i + 2, photos.length) +
+                ' di ' + photos.length +
+              '</div>' +
+            '</div>' +
+            '<div class="ph-stripe"></div>' +
+            '<div class="ph-body">' +
+              chunk.map(function(m){
+                return '<div class="ph-item">' +
+                  '<img src="' + f.photos[m.id] + '">' +
+                  '<div class="ph-cap">' +
+                    '<span class="badge">#' + m.num + '</span>' +
+                    '<span>Punto di presa ' + m.num + '</span>' +
+                  '</div>' +
+                '</div>';
+              }).join('') +
+            '</div>' +
+          '</div>';
+      }
     }
   });
 
