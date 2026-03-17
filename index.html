@@ -493,29 +493,19 @@ function annotateFloor(f,cb){
   img.onerror=function(){cb(f.imgData);};img.src=f.imgData;
 }
 
-/* ══ RIDIMENSIONA FOTO SU CANVAS per adattarla a metà pagina A4 ══
-   A4 a 96dpi: 794×1123px  →  area utile foto (con header ~120px):
-     slot verticale   (landscape impilate): MAX 660×310px per foto
-     slot orizzontale (portrait affiancate): MAX 320×560px per foto
-   Ritorna una data-URL JPEG con le dimensioni già corrette.
+/* ══ RIDIMENSIONA FOTO — max 150×150mm mantenendo proporzioni ══
+   150mm a 96dpi = round(150 * 96 / 25.4) = 567px
 */
-function resizePhoto(src, mode){
-  /* mode: 'v' = slot verticale (landscape), 'h' = slot orizzontale (portrait) */
+function resizePhoto(src){
   return new Promise(function(resolve){
     var img=new Image();
     img.onload=function(){
-      var sw = img.naturalWidth, sh = img.naturalHeight;
-
-      /* Slot disponibile in px (a 96dpi, A4=794px, header~120px, padding~40px) */
-      var maxW = mode==='h' ? 320 : 660;
-      var maxH = mode==='h' ? 560 : 310;
-
-      /* Scala mantenendo proporzioni, non superare il box */
-      var ratio = Math.min(maxW/sw, maxH/sh);
-      if(ratio>1) ratio=1; /* non ingrandire mai */
-      var dw = Math.round(sw*ratio);
-      var dh = Math.round(sh*ratio);
-
+      var sw=img.naturalWidth, sh=img.naturalHeight;
+      var MAX=567; /* 150mm @ 96dpi */
+      var ratio=Math.min(MAX/sw, MAX/sh);
+      if(ratio>1) ratio=1;
+      var dw=Math.round(sw*ratio);
+      var dh=Math.round(sh*ratio);
       var cv=document.createElement('canvas');
       cv.width=dw; cv.height=dh;
       var ctx=cv.getContext('2d');
@@ -574,34 +564,23 @@ function doGenPDF(){
         });
 
         function doResize(){
-          /* Per ogni pagina (chunk di 2) determina il mode e ridimensiona */
-          /* Raggruppa foto per piano, in ordine */
-          var resized={}, tasks=[], total=0;
-
+          /* Raccoglie tutte le foto e le ridimensiona a max 150x150mm */
+          var tasks=[];
           S.floors.forEach(function(f){
-            var photos=f.markers.filter(function(m){return f.photos[m.id];});
-            for(var i=0;i<photos.length;i+=2){
-              var chunk=photos.slice(i,i+2);
-              /* Determina mode per questo chunk */
-              var l0=isLand(rawDims[f.id+'__'+chunk[0].id]);
-              var l1=chunk.length>1?isLand(rawDims[f.id+'__'+chunk[1].id]):l0;
-              var mode=(l0&&l1)?'v':'h';
-              chunk.forEach(function(m){
-                tasks.push({fid:f.id,mid:m.id,src:f.photos[m.id],mode:mode});
-                total++;
-              });
-            }
+            f.markers.forEach(function(m){
+              if(f.photos[m.id]) tasks.push({fid:f.id,mid:m.id,src:f.photos[m.id]});
+            });
           });
 
           if(!tasks.length){
-            renderFascicolo(title,annotated,{},rawDims,{});
-            spinHide();showScreen('scFascicolo');window.scrollTo(0,0);
+            spinShow('Costruzione fascicolo…');
+            setTimeout(function(){renderFascicolo(title,annotated,rawDims,{});spinHide();showScreen('scFascicolo');window.scrollTo(0,0);},80);
             return;
           }
 
           var resizedMap={}, done2=0;
           tasks.forEach(function(t){
-            resizePhoto(t.src, t.mode).then(function(data){
+            resizePhoto(t.src).then(function(data){
               resizedMap[t.fid+'__'+t.mid]=data;
               done2++;
               if(done2===tasks.length){
@@ -673,35 +652,23 @@ function renderFascicolo(title,annotated,dims,resizedMap){
     '.lamber { color:#9a6e00; font-weight:700 }',
     '.fp-cap { font-size:6.5pt; color:#bbb; font-style:italic; margin-top:2mm; flex-shrink:0 }',
 
-    /* ── PAGINE FOTO ── header comune */
+    /* ── PAGINE FOTO ── */
     '.ph-header { background:#1c2340; padding:7mm 14mm 0 14mm; flex-shrink:0 }',
     '.ph-header h3 { font-size:13pt; font-weight:900; color:#fff; margin-bottom:3mm }',
     '.ph-meta { font-size:8pt; color:#f0c040; font-weight:600; padding-bottom:6mm }',
     '.ph-stripe { height:3px; background:#f0c040; flex-shrink:0 }',
 
-    /*
-     * Layout semplice: le immagini sono già ridimensionate fisicamente
-     * dal canvas in doGenPDF → nessun trucco flex necessario.
-     *
-     * ph-body-v: entrambe landscape → impilate, centrate
-     * ph-body-h: portrait/miste   → affiancate, centrate
-     */
-    '.ph-body-v { padding:6mm 14mm 6mm;',
-    '             display:flex; flex-direction:column;',
-    '             align-items:center; gap:6mm }',
+    /* corpo pagina: due foto centrate con gap */
+    '.ph-body { padding:8mm 14mm 8mm;',
+    '           display:flex; flex-direction:column;',
+    '           align-items:center; gap:8mm }',
 
-    '.ph-body-h { padding:6mm 14mm 6mm;',
-    '             display:flex; flex-direction:row;',
-    '             align-items:flex-start; justify-content:center; gap:6mm }',
-
-    /* contenitore singola foto */
+    /* ogni foto: immagine già a dimensione corretta (max 567px = 150mm) */
     '.ph-item { display:flex; flex-direction:column; align-items:flex-start }',
-
-    /* l immagine ha già le dimensioni corrette — non scalare */
     '.ph-item img {',
     '  display:block;',
-    '  max-width:100%;',   /* sicurezza: non uscire mai dal foglio */
-    '  height:auto;',
+    '  max-width:150mm; max-height:150mm;',
+    '  width:auto; height:auto;',
     '  border-radius:3px; border:1px solid #e0e0e0 }',
 
     '.ph-cap { font-size:8pt; color:#555; margin-top:2.5mm;',
@@ -810,12 +777,6 @@ function renderFascicolo(title,annotated,dims,resizedMap){
         var pageNum=Math.floor(i/2)+1;
         var totPages=Math.ceil(photos.length/2);
 
-        /* Determina layout dal dims (già calcolato in doGenPDF) */
-        function landChk(m){var d=dims[f.id+'__'+m.id];return d?(d.w>=d.h):true;}
-        var l0=landChk(chunk[0]);
-        var l1=chunk.length>1?landChk(chunk[1]):l0;
-        var bodyClass=(l0&&l1)?'ph-body-v':'ph-body-h';
-
         out+=
           '<div class="page">'+
             '<div class="ph-header">'+
@@ -827,9 +788,8 @@ function renderFascicolo(title,annotated,dims,resizedMap){
               '</div>'+
             '</div>'+
             '<div class="ph-stripe"></div>'+
-            '<div class="'+bodyClass+'">'+
+            '<div class="ph-body">'+
               chunk.map(function(m){
-                /* usa la versione ridimensionata se disponibile */
                 var src=resizedMap[f.id+'__'+m.id]||f.photos[m.id];
                 return '<div class="ph-item">'+
                   '<img src="'+src+'" alt="Punto di presa '+m.num+'">'+
