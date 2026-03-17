@@ -493,12 +493,38 @@ function annotateFloor(f,cb){
   img.onerror=function(){cb(f.imgData);};img.src=f.imgData;
 }
 
-/* ══ PRE-LOAD IMMAGINI PER RILEVARE DIMENSIONI ══ */
-function getImgDims(src){
+/* ══ RIDIMENSIONA FOTO SU CANVAS per adattarla a metà pagina A4 ══
+   A4 a 96dpi: 794×1123px  →  area utile foto (con header ~120px):
+     slot verticale   (landscape impilate): MAX 660×310px per foto
+     slot orizzontale (portrait affiancate): MAX 320×560px per foto
+   Ritorna una data-URL JPEG con le dimensioni già corrette.
+*/
+function resizePhoto(src, mode){
+  /* mode: 'v' = slot verticale (landscape), 'h' = slot orizzontale (portrait) */
   return new Promise(function(resolve){
     var img=new Image();
-    img.onload=function(){resolve({w:img.naturalWidth,h:img.naturalHeight});};
-    img.onerror=function(){resolve({w:1,h:1});};
+    img.onload=function(){
+      var sw = img.naturalWidth, sh = img.naturalHeight;
+
+      /* Slot disponibile in px (a 96dpi, A4=794px, header~120px, padding~40px) */
+      var maxW = mode==='h' ? 320 : 660;
+      var maxH = mode==='h' ? 560 : 310;
+
+      /* Scala mantenendo proporzioni, non superare il box */
+      var ratio = Math.min(maxW/sw, maxH/sh);
+      if(ratio>1) ratio=1; /* non ingrandire mai */
+      var dw = Math.round(sw*ratio);
+      var dh = Math.round(sh*ratio);
+
+      var cv=document.createElement('canvas');
+      cv.width=dw; cv.height=dh;
+      var ctx=cv.getContext('2d');
+      ctx.fillStyle='#fff';
+      ctx.fillRect(0,0,dw,dh);
+      ctx.drawImage(img,0,0,dw,dh);
+      resolve(cv.toDataURL('image/jpeg',0.88));
+    };
+    img.onerror=function(){resolve(src);};
     img.src=src;
   });
 }
@@ -509,42 +535,95 @@ function doGenPDF(){
   var title=document.getElementById('projTitle').value.trim()||'Fascicolo Sopralluogo';
   spinShow('Elaborazione planimetrie…');
 
-  var done=0,annotated={};
+  var done=0, annotated={};
   S.floors.forEach(function(f){
     annotateFloor(f,function(url){
-      annotated[f.id]=url;done++;
+      annotated[f.id]=url; done++;
       if(done===S.floors.length){
-        spinShow('Rilevamento orientamento foto…');
-        /* Pre-carica tutte le foto per rilevare dimensioni */
+        spinShow('Ridimensionamento foto…');
+
+        /* Raccoglie tutte le foto da ridimensionare */
         var allPhotos=[];
         S.floors.forEach(function(f){
           f.markers.forEach(function(m){
-            if(f.photos[m.id])allPhotos.push({fid:f.id,mid:m.id,src:f.photos[m.id]});
+            if(f.photos[m.id]) allPhotos.push({fid:f.id, mid:m.id, src:f.photos[m.id]});
           });
         });
+
         if(!allPhotos.length){
           spinShow('Costruzione fascicolo…');
           setTimeout(function(){renderFascicolo(title,annotated,{});spinHide();showScreen('scFascicolo');window.scrollTo(0,0);},80);
           return;
         }
-        var dims={},loaded=0;
+
+        /* Prima passa: carica tutte le foto e rileva orientamento */
+        var rawDims={}, dimsLoaded=0;
         allPhotos.forEach(function(p){
-          getImgDims(p.src).then(function(d){
-            dims[p.fid+'__'+p.mid]=d;
-            loaded++;
-            if(loaded===allPhotos.length){
-              spinShow('Costruzione fascicolo…');
-              setTimeout(function(){renderFascicolo(title,annotated,dims);spinHide();showScreen('scFascicolo');window.scrollTo(0,0);},80);
+          var img=new Image();
+          img.onload=function(){
+            rawDims[p.fid+'__'+p.mid]={w:img.naturalWidth,h:img.naturalHeight};
+            dimsLoaded++;
+            if(dimsLoaded===allPhotos.length) doResize();
+          };
+          img.onerror=function(){
+            rawDims[p.fid+'__'+p.mid]={w:2,h:1};
+            dimsLoaded++;
+            if(dimsLoaded===allPhotos.length) doResize();
+          };
+          img.src=p.src;
+        });
+
+        function doResize(){
+          /* Per ogni pagina (chunk di 2) determina il mode e ridimensiona */
+          /* Raggruppa foto per piano, in ordine */
+          var resized={}, tasks=[], total=0;
+
+          S.floors.forEach(function(f){
+            var photos=f.markers.filter(function(m){return f.photos[m.id];});
+            for(var i=0;i<photos.length;i+=2){
+              var chunk=photos.slice(i,i+2);
+              /* Determina mode per questo chunk */
+              var l0=isLand(rawDims[f.id+'__'+chunk[0].id]);
+              var l1=chunk.length>1?isLand(rawDims[f.id+'__'+chunk[1].id]):l0;
+              var mode=(l0&&l1)?'v':'h';
+              chunk.forEach(function(m){
+                tasks.push({fid:f.id,mid:m.id,src:f.photos[m.id],mode:mode});
+                total++;
+              });
             }
           });
-        });
+
+          if(!tasks.length){
+            renderFascicolo(title,annotated,{},rawDims,{});
+            spinHide();showScreen('scFascicolo');window.scrollTo(0,0);
+            return;
+          }
+
+          var resizedMap={}, done2=0;
+          tasks.forEach(function(t){
+            resizePhoto(t.src, t.mode).then(function(data){
+              resizedMap[t.fid+'__'+t.mid]=data;
+              done2++;
+              if(done2===tasks.length){
+                spinShow('Costruzione fascicolo…');
+                setTimeout(function(){
+                  renderFascicolo(title,annotated,rawDims,resizedMap);
+                  spinHide();showScreen('scFascicolo');window.scrollTo(0,0);
+                },80);
+              }
+            });
+          });
+        }
+
+        function isLand(d){return d?(d.w>=d.h):true;}
       }
     });
   });
 }
 
 /* ══ RENDER FASCICOLO ══ */
-function renderFascicolo(title,annotated,dims){
+function renderFascicolo(title,annotated,dims,resizedMap){
+  resizedMap=resizedMap||{};
   var now=new Date();
   var ds=now.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
 
@@ -601,42 +680,32 @@ function renderFascicolo(title,annotated,dims){
     '.ph-stripe { height:3px; background:#f0c040; flex-shrink:0 }',
 
     /*
-     * Layout foto: due modalità
+     * Layout semplice: le immagini sono già ridimensionate fisicamente
+     * dal canvas in doGenPDF → nessun trucco flex necessario.
      *
-     * .ph-body-v  = entrambe LANDSCAPE → impilate verticalmente (una sopra l'altra)
-     *               ognuna occupa metà altezza disponibile (~105mm)
-     *               immagine al massimo 17.5cm larga, 10cm alta
-     *
-     * .ph-body-h  = entrambe PORTRAIT o miste → affiancate orizzontalmente
-     *               ognuna occupa metà larghezza (~82mm)
-     *               immagine al massimo 8cm larga, 19cm alta
+     * ph-body-v: entrambe landscape → impilate, centrate
+     * ph-body-h: portrait/miste   → affiancate, centrate
      */
-
-    /* LAYOUT VERTICALE (foto landscape impilate) */
     '.ph-body-v { padding:6mm 14mm 6mm;',
-    '             flex:1; display:flex; flex-direction:column;',
-    '             gap:5mm; justify-content:center }',
-    '.ph-item-v { display:flex; flex-direction:column; flex:1; min-height:0 }',
-    '.ph-item-v img {',
-    '  width:100%; height:100%;',
-    '  max-height:108mm;',       /* ~metà foglio al netto header */
-    '  object-fit:contain;',
-    '  display:block;',
-    '  border-radius:3px; border:1px solid #e0e0e0 }',
-    '.ph-cap { font-size:8pt; color:#555; margin-top:2.5mm;',
-    '          display:flex; align-items:center; gap:6px; flex-shrink:0 }',
+    '             display:flex; flex-direction:column;',
+    '             align-items:center; gap:6mm }',
 
-    /* LAYOUT ORIZZONTALE (foto portrait o miste affiancate) */
     '.ph-body-h { padding:6mm 14mm 6mm;',
-    '             flex:1; display:flex; flex-direction:row;',
-    '             gap:6mm; align-items:stretch }',
-    '.ph-item-h { display:flex; flex-direction:column; flex:1; min-width:0 }',
-    '.ph-item-h img {',
-    '  width:100%; flex:1; min-height:0;',
-    '  max-height:210mm;',
-    '  object-fit:contain;',
+    '             display:flex; flex-direction:row;',
+    '             align-items:flex-start; justify-content:center; gap:6mm }',
+
+    /* contenitore singola foto */
+    '.ph-item { display:flex; flex-direction:column; align-items:flex-start }',
+
+    /* l immagine ha già le dimensioni corrette — non scalare */
+    '.ph-item img {',
     '  display:block;',
+    '  max-width:100%;',   /* sicurezza: non uscire mai dal foglio */
+    '  height:auto;',
     '  border-radius:3px; border:1px solid #e0e0e0 }',
+
+    '.ph-cap { font-size:8pt; color:#555; margin-top:2.5mm;',
+    '          display:flex; align-items:center; gap:6px }',
 
     /* badge */
     '.badge { background:#f0c040; color:#111; border-radius:3px;',
@@ -741,26 +810,11 @@ function renderFascicolo(title,annotated,dims){
         var pageNum=Math.floor(i/2)+1;
         var totPages=Math.ceil(photos.length/2);
 
-        /*
-         * Determina orientamento di ogni foto nel chunk
-         * isLandscape = true se larghezza > altezza
-         */
-        function isLandscape(m){
-          var d=dims[f.id+'__'+m.id];
-          return d ? d.w>=d.h : true; /* default landscape se non trovato */
-        }
-
-        var landscape0 = isLandscape(chunk[0]);
-        var landscape1 = chunk.length>1 ? isLandscape(chunk[1]) : landscape0;
-
-        /*
-         * Scelta layout:
-         * - entrambe landscape (o singola landscape) → verticale (impilate)
-         * - altrimenti (almeno una portrait) → orizzontale (affiancate)
-         */
-        var useVertical = landscape0 && landscape1;
-        var bodyClass   = useVertical ? 'ph-body-v' : 'ph-body-h';
-        var itemClass   = useVertical ? 'ph-item-v' : 'ph-item-h';
+        /* Determina layout dal dims (già calcolato in doGenPDF) */
+        function landChk(m){var d=dims[f.id+'__'+m.id];return d?(d.w>=d.h):true;}
+        var l0=landChk(chunk[0]);
+        var l1=chunk.length>1?landChk(chunk[1]):l0;
+        var bodyClass=(l0&&l1)?'ph-body-v':'ph-body-h';
 
         out+=
           '<div class="page">'+
@@ -775,8 +829,10 @@ function renderFascicolo(title,annotated,dims){
             '<div class="ph-stripe"></div>'+
             '<div class="'+bodyClass+'">'+
               chunk.map(function(m){
-                return '<div class="'+itemClass+'">'+
-                  '<img src="'+f.photos[m.id]+'" alt="Punto di presa '+m.num+'">'+
+                /* usa la versione ridimensionata se disponibile */
+                var src=resizedMap[f.id+'__'+m.id]||f.photos[m.id];
+                return '<div class="ph-item">'+
+                  '<img src="'+src+'" alt="Punto di presa '+m.num+'">'+
                   '<div class="ph-cap">'+
                     '<span class="badge">#'+m.num+'</span>'+
                     '<span>Punto di presa '+m.num+'</span>'+
